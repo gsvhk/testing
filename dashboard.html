@@ -3,9 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Dependency-Track Dashboard</title>
+    <title>Vulnerability Management Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,10 +27,11 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f7fa;
             color: #333;
+            line-height: 1.6;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
             padding: 20px 40px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -38,20 +50,27 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 30px;
+            padding: 20px;
         }
 
-        .config-section {
+        .card {
             background: white;
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+        }
+
+        .card h2 {
+            margin-bottom: 15px;
+            color: var(--dark);
+            font-size: 18px;
         }
 
         .form-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 15px;
         }
@@ -68,17 +87,18 @@
             color: #555;
         }
 
-        input, select {
+        input, select, textarea {
             padding: 10px;
             border: 2px solid #e0e0e0;
             border-radius: 6px;
             font-size: 14px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
 
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
         }
 
         .btn {
@@ -89,116 +109,135 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--secondary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: #212529; }
+        .btn-info { background: var(--info); color: white; }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
         }
 
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .metric-card {
             background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 20px;
+            border-radius: 8px;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
         }
 
+        .metric-card.critical { border-left-color: var(--danger); }
+        .metric-card.high { border-left-color: var(--warning); }
+        .metric-card.medium { border-left-color: var(--info); }
+        .metric-card.low { border-left-color: var(--success); }
+
         .metric-card h3 {
-            font-size: 14px;
+            font-size: 12px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .metric-card .value {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: 700;
             margin-bottom: 5px;
         }
 
-        .metric-card.critical .value { color: #dc3545; }
-        .metric-card.high .value { color: #fd7e14; }
-        .metric-card.medium .value { color: #ffc107; }
-        .metric-card.low .value { color: #28a745; }
-        .metric-card.affected .value { color: #dc3545; }
-        .metric-card.not-affected .value { color: #28a745; }
-        .metric-card.under-review .value { color: #6c757d; }
+        .metric-card.critical .value { color: var(--danger); }
+        .metric-card.high .value { color: var(--warning); }
+        .metric-card.medium .value { color: var(--info); }
+        .metric-card.low .value { color: var(--success); }
 
         .charts-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .chart-card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .chart-card h3 {
-            font-size: 16px;
             margin-bottom: 20px;
-            color: #333;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: var(--dark);
         }
 
         .filters-section {
             background: white;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 8px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .filters-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .vulnerabilities-section {
+        .table-container {
             background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .vulnerabilities-header {
+        .table-header {
+            padding: 20px;
+            background: var(--light);
+            border-bottom: 1px solid #dee2e6;
             display: flex;
-            justify-content: space-between;
+            justify-content: between;
             align-items: center;
-            margin-bottom: 20px;
         }
 
-        .vulnerabilities-header h2 {
-            font-size: 20px;
+        .table-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-box {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 250px;
         }
 
         .vuln-table {
@@ -206,22 +245,19 @@
             border-collapse: collapse;
         }
 
-        .vuln-table thead {
-            background: #f8f9fa;
-        }
-
         .vuln-table th {
+            background: var(--light);
             padding: 12px;
             text-align: left;
-            font-size: 13px;
             font-weight: 600;
+            font-size: 13px;
             color: #555;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid #dee2e6;
         }
 
         .vuln-table td {
             padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #e9ecef;
             font-size: 14px;
         }
 
@@ -229,29 +265,27 @@
             background: #f8f9fa;
         }
 
-        .severity-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
         }
 
-        .severity-critical { background: #ffe5e5; color: #dc3545; }
-        .severity-high { background: #fff3e0; color: #fd7e14; }
-        .severity-medium { background: #fff9e6; color: #ffc107; }
-        .severity-low { background: #e8f5e9; color: #28a745; }
+        .badge-critical { background: var(--danger); color: white; }
+        .badge-high { background: var(--warning); color: #212529; }
+        .badge-medium { background: var(--info); color: white; }
+        .badge-low { background: var(--success); color: white; }
 
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
+        .badge-affected { background: var(--danger); color: white; }
+        .badge-not-affected { background: var(--success); color: white; }
+        .badge-under-review { background: #6c757d; color: white; }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
         }
-
-        .status-affected { background: #ffe5e5; color: #dc3545; }
-        .status-not-affected { background: #e8f5e9; color: #28a745; }
-        .status-under-review { background: #f0f0f0; color: #6c757d; }
 
         .modal {
             display: none;
@@ -262,8 +296,8 @@
             height: 100%;
             background: rgba(0,0,0,0.5);
             z-index: 1000;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
         }
 
         .modal.active {
@@ -282,13 +316,14 @@
 
         .modal-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: between;
             align-items: center;
             margin-bottom: 20px;
         }
 
-        .modal-header h2 {
-            font-size: 20px;
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
         }
 
         .close-btn {
@@ -303,42 +338,11 @@
             color: #333;
         }
 
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 150px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #667eea;
-        }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         .alert {
-            padding: 15px;
+            padding: 12px 15px;
             border-radius: 6px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            font-size: 14px;
         }
 
         .alert-success {
@@ -353,188 +357,385 @@
             border: 1px solid #f5c6cb;
         }
 
-        .upload-section {
-            margin: 20px 0;
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
 
-        .file-upload {
-            border: 2px dashed #667eea;
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
             padding: 20px;
-            text-align: center;
-            border-radius: 8px;
+            background: var(--light);
+        }
+
+        .page-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .sync-status {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .sync-success { color: var(--success); }
+        .sync-error { color: var(--danger); }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
             cursor: pointer;
-            transition: background 0.3s;
         }
 
-        .file-upload:hover {
-            background: #f0f0ff;
+        .file-input-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
         }
 
-        .file-upload input {
+        .file-input-label:hover {
+            background: #5a6268;
+        }
+
+        .tab-container {
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--light);
+            border-radius: 6px 6px 0 0;
+            overflow: hidden;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: var(--light);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .tab-content {
             display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .select-all {
+            margin-right: 10px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🛡️ Custom Dependency-Track Dashboard</h1>
-        <p>Vulnerability Assessment & Tracking System with Local Storage</p>
+        <h1>🛡️ Vulnerability Management Dashboard</h1>
+        <p>Complete vulnerability assessment and tracking system</p>
     </div>
 
     <div class="container">
         <!-- Configuration Section -->
-        <div class="config-section">
-            <h2 style="margin-bottom: 15px;">🔧 Dependency-Track Configuration</h2>
+        <div class="card">
+            <h2>🔧 Dependency-Track Configuration</h2>
             <div class="form-row">
                 <div class="form-group">
-                    <label>DT URL:</label>
-                    <input type="text" id="dt-url" placeholder="http://localhost:8080">
+                    <label>Dependency-Track URL</label>
+                    <input type="url" id="dt-url" placeholder="https://your-dt-instance.com">
                 </div>
                 <div class="form-group">
-                    <label>API Key:</label>
-                    <input type="password" id="dt-api-key" placeholder="Your API Key">
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-primary" onclick="saveConfig()">Save Config</button>
+                    <label>API Key</label>
+                    <input type="password" id="api-key" placeholder="Your API key">
                 </div>
                 <div class="form-group">
                     <label>&nbsp;</label>
-                    <button class="btn btn-secondary" onclick="syncProjects()">Sync Projects</button>
+                    <button class="btn btn-primary" onclick="testConnection()">
+                        <span id="test-connection-text">Test Connection</span>
+                        <span id="test-connection-spinner" class="loading" style="display: none;"></span>
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-success" onclick="saveConfig()">Save Configuration</button>
                 </div>
             </div>
+            <div id="config-message"></div>
         </div>
 
-        <!-- Project Selection -->
-        <div class="config-section">
-            <h2 style="margin-bottom: 15px;">📦 Project & Component Selection</h2>
+        <!-- Data Sync Section -->
+        <div class="card">
+            <h2>🔄 Data Synchronization</h2>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Select Project:</label>
-                    <select id="project-select" onchange="loadComponents()">
-                        <option value="">-- Select Project --</option>
+                    <label>Sync Projects</label>
+                    <button class="btn btn-primary" onclick="syncProjects()" id="sync-projects-btn">
+                        <span>Sync Projects</span>
+                        <span id="sync-projects-spinner" class="loading" style="display: none;"></span>
+                    </button>
+                    <div class="sync-status" id="projects-sync-status"></div>
+                </div>
+                <div class="form-group">
+                    <label>Select Project</label>
+                    <select id="project-select" onchange="onProjectChange()">
+                        <option value="">Select a project...</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Select Component:</label>
-                    <select id="component-select">
-                        <option value="">-- Select Component --</option>
-                    </select>
+                    <label>Sync Vulnerabilities</label>
+                    <button class="btn btn-primary" onclick="syncVulnerabilities()" id="sync-vuln-btn" disabled>
+                        <span>Sync Vulnerabilities</span>
+                        <span id="sync-vuln-spinner" class="loading" style="display: none;"></span>
+                    </button>
+                    <div class="sync-status" id="vuln-sync-status"></div>
                 </div>
                 <div class="form-group">
                     <label>&nbsp;</label>
-                    <button class="btn btn-success" onclick="loadVulnerabilities()">Load CVEs</button>
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-primary" onclick="openImportModal()">Import Assessment</button>
+                    <button class="btn btn-info" onclick="refreshData()">Refresh Data</button>
                 </div>
             </div>
         </div>
 
         <!-- Dashboard Metrics -->
-        <div class="metrics-grid" id="metrics-grid">
+        <div class="metrics-grid">
             <div class="metric-card critical">
                 <h3>Critical</h3>
-                <div class="value" id="metric-critical">0</div>
+                <div class="value" id="critical-count">0</div>
+                <div>Vulnerabilities</div>
             </div>
             <div class="metric-card high">
                 <h3>High</h3>
-                <div class="value" id="metric-high">0</div>
+                <div class="value" id="high-count">0</div>
+                <div>Vulnerabilities</div>
             </div>
             <div class="metric-card medium">
                 <h3>Medium</h3>
-                <div class="value" id="metric-medium">0</div>
+                <div class="value" id="medium-count">0</div>
+                <div>Vulnerabilities</div>
             </div>
             <div class="metric-card low">
                 <h3>Low</h3>
-                <div class="value" id="metric-low">0</div>
-            </div>
-            <div class="metric-card affected">
-                <h3>Affected</h3>
-                <div class="value" id="metric-affected">0</div>
-            </div>
-            <div class="metric-card not-affected">
-                <h3>Not Affected</h3>
-                <div class="value" id="metric-not-affected">0</div>
-            </div>
-            <div class="metric-card under-review">
-                <h3>Under Review</h3>
-                <div class="value" id="metric-under-review">0</div>
+                <div class="value" id="low-count">0</div>
+                <div>Vulnerabilities</div>
             </div>
         </div>
 
         <!-- Charts -->
         <div class="charts-section">
-            <div class="chart-card">
-                <h3>📊 Severity Distribution</h3>
-                <canvas id="severity-chart"></canvas>
+            <div class="chart-container">
+                <h3>Severity Distribution</h3>
+                <canvas id="severity-chart" height="250"></canvas>
             </div>
-            <div class="chart-card">
-                <h3>📈 Status Overview</h3>
-                <canvas id="status-chart"></canvas>
-            </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="filters-section">
-            <h3 style="margin-bottom: 15px;">🔍 Filters</h3>
-            <div class="filters-row">
-                <div class="form-group">
-                    <label>Severity:</label>
-                    <select id="filter-severity" onchange="applyFilters()">
-                        <option value="">All</option>
-                        <option value="CRITICAL">Critical</option>
-                        <option value="HIGH">High</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="LOW">Low</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Status:</label>
-                    <select id="filter-status" onchange="applyFilters()">
-                        <option value="">All</option>
-                        <option value="Affected">Affected</option>
-                        <option value="Not Affected">Not Affected</option>
-                        <option value="Under Review">Under Review</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-secondary" onclick="exportReport()">📥 Export Report</button>
-                </div>
+            <div class="chart-container">
+                <h3>Assessment Status</h3>
+                <canvas id="status-chart" height="250"></canvas>
             </div>
         </div>
 
-        <!-- Vulnerabilities Table -->
-        <div class="vulnerabilities-section">
-            <div class="vulnerabilities-header">
-                <h2>🔒 Vulnerabilities</h2>
-                <span id="vuln-count">0 vulnerabilities</span>
+        <!-- Tabs for Vulnerabilities -->
+        <div class="tab-container">
+            <div class="tabs">
+                <button class="tab active" onclick="openTab('vulnerabilities-tab')">Vulnerabilities</button>
+                <button class="tab" onclick="openTab('assessment-tab')">Bulk Assessment</button>
+                <button class="tab" onclick="openTab('import-export-tab')">Import/Export</button>
             </div>
-            <div id="vuln-loading" class="loading" style="display: none;">
-                <div class="spinner"></div>
-                <p>Loading vulnerabilities...</p>
+
+            <!-- Vulnerabilities Tab -->
+            <div id="vulnerabilities-tab" class="tab-content active">
+                <div class="filters-section">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Project Filter</label>
+                            <select id="filter-project" onchange="applyFilters()">
+                                <option value="">All Projects</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Severity</label>
+                            <select id="filter-severity" onchange="applyFilters()">
+                                <option value="">All Severities</option>
+                                <option value="CRITICAL">Critical</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="filter-status" onchange="applyFilters()">
+                                <option value="">All Statuses</option>
+                                <option value="Affected">Affected</option>
+                                <option value="Not Affected">Not Affected</option>
+                                <option value="Under Review">Under Review</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2>Vulnerabilities</h2>
+                        <div class="table-actions">
+                            <input type="text" id="search-box" class="search-box" placeholder="Search CVE or component..." onkeyup="applyFilters()">
+                            <span id="vuln-count" class="page-info">0 vulnerabilities</span>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="vuln-table">
+                            <thead>
+                                <tr>
+                                    <th>CVE ID</th>
+                                    <th>Severity</th>
+                                    <th>CVSS</th>
+                                    <th>Component</th>
+                                    <th>Project</th>
+                                    <th>Status</th>
+                                    <th>Published</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vuln-tbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                        No vulnerabilities found. Sync data from Dependency-Track first.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button class="btn btn-sm" onclick="changePage(-1)" id="prev-btn" disabled>Previous</button>
+                        <span class="page-info" id="page-info">Page 1 of 1</span>
+                        <button class="btn btn-sm" onclick="changePage(1)" id="next-btn" disabled>Next</button>
+                    </div>
+                </div>
             </div>
-            <table class="vuln-table" id="vuln-table">
-                <thead>
-                    <tr>
-                        <th>CVE ID</th>
-                        <th>Component</th>
-                        <th>Severity</th>
-                        <th>CVSS</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="vuln-tbody">
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
-                            No vulnerabilities loaded. Select a project and component to get started.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+
+            <!-- Bulk Assessment Tab -->
+            <div id="assessment-tab" class="tab-content">
+                <div class="card">
+                    <h2>Bulk Assessment Update</h2>
+                    <div class="bulk-actions">
+                        <label class="select-all">
+                            <input type="checkbox" id="select-all" onchange="toggleSelectAll()"> Select All
+                        </label>
+                        <select id="bulk-status" class="btn-sm">
+                            <option value="Under Review">Under Review</option>
+                            <option value="Affected">Affected</option>
+                            <option value="Not Affected">Not Affected</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="applyBulkStatus()">Apply to Selected</button>
+                        <button class="btn btn-success btn-sm" onclick="saveBulkAssessments()">Save All Changes</button>
+                    </div>
+                    <div style="max-height: 600px; overflow-y: auto;">
+                        <table class="vuln-table">
+                            <thead>
+                                <tr>
+                                    <th width="30"><input type="checkbox" id="select-all-header" onchange="toggleSelectAll()"></th>
+                                    <th>CVE ID</th>
+                                    <th>Severity</th>
+                                    <th>Current Status</th>
+                                    <th>New Status</th>
+                                    <th>Assessment Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulk-assessment-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import/Export Tab -->
+            <div id="import-export-tab" class="tab-content">
+                <div class="card">
+                    <h2>📤 Import Assessments</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Download Template</label>
+                            <button class="btn btn-info" onclick="downloadTemplate()">Download Assessment Template</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Import Excel File</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="import-file" accept=".xlsx,.xls">
+                                <label class="file-input-label">Choose Excel File</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-success" onclick="importExcel()">Import Assessments</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📥 Export Reports</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Export Vulnerability Report</label>
+                            <button class="btn btn-primary" onclick="exportReport()">Export Excel Report</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Export Current View</label>
+                            <button class="btn btn-secondary" onclick="exportCurrentView()">Export Filtered Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -542,350 +743,727 @@
     <div class="modal" id="assessment-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>📝 Assessment Details</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <h3>Vulnerability Assessment</h3>
+                <button class="close-btn" onclick="closeAssessmentModal()">&times;</button>
             </div>
-            <div id="modal-body">
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>CVE ID:</label>
-                    <input type="text" id="modal-cve-id" readonly>
-                </div>
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Status:</label>
-                    <select id="modal-status">
-                        <option value="Under Review">Under Review</option>
-                        <option value="Affected">Affected</option>
-                        <option value="Not Affected">Not Affected</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Assessment:</label>
-                    <textarea id="modal-assessment" placeholder="Enter your assessment details..."></textarea>
-                </div>
-                <button class="btn btn-primary" onclick="saveAssessment()" style="width: 100%;">Save Assessment</button>
+            <div class="form-group">
+                <label>CVE ID</label>
+                <input type="text" id="modal-cve-id" readonly>
             </div>
-        </div>
-    </div>
-
-    <!-- Import Modal -->
-    <div class="modal" id="import-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>📤 Import Assessment</h2>
-                <button class="close-btn" onclick="closeImportModal()">&times;</button>
+            <div class="form-group">
+                <label>Severity</label>
+                <input type="text" id="modal-severity" readonly>
             </div>
-            <div class="upload-section">
-                <label class="file-upload" for="import-file">
-                    <p>📁 Click to upload Excel file</p>
-                    <p style="font-size: 12px; color: #999; margin-top: 5px;">Accepts .xlsx or .xls files</p>
-                    <input type="file" id="import-file" accept=".xlsx,.xls" onchange="importAssessment()">
-                </label>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="modal-status">
+                    <option value="Under Review">Under Review</option>
+                    <option value="Affected">Affected</option>
+                    <option value="Not Affected">Not Affected</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Assessment Notes</label>
+                <textarea id="modal-assessment" rows="4" placeholder="Enter assessment details and rationale..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeAssessmentModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveAssessment()">Save Assessment</button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentVulnId = null;
-        let charts = {};
+        // Global variables
+        let currentPage = 1;
+        let perPage = 50;
+        let totalPages = 1;
+        let currentFilters = {};
+        let currentVulnerability = null;
+        let severityChart = null;
+        let statusChart = null;
+        let bulkAssessmentData = {};
 
-        // Load configuration on page load
-        window.addEventListener('DOMContentLoaded', async () => {
-            await loadConfig();
-            await loadProjects();
-            await updateDashboard();
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            loadProjects();
+            loadDashboardMetrics();
+            initializeCharts();
+            loadVulnerabilities();
+            
+            // Refresh data every 30 seconds
+            setInterval(loadDashboardMetrics, 30000);
         });
 
+        // Tab management
+        function openTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+
+            // Load data for specific tabs
+            if (tabName === 'assessment-tab') {
+                loadBulkAssessmentData();
+            }
+        }
+
+        // Configuration functions
         async function loadConfig() {
-            const response = await fetch('/api/config');
-            const config = await response.json();
-            document.getElementById('dt-url').value = config.url || '';
-            document.getElementById('dt-api-key').value = config.api_key || '';
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                document.getElementById('dt-url').value = config.url || '';
+                document.getElementById('api-key').value = config.api_key || '';
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
         }
 
         async function saveConfig() {
-            const config = {
-                url: document.getElementById('dt-url').value,
-                api_key: document.getElementById('dt-api-key').value
-            };
-            
-            const response = await fetch('/api/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(config)
-            });
-            
-            if (response.ok) {
-                alert('✅ Configuration saved successfully!');
+            const url = document.getElementById('dt-url').value;
+            const apiKey = document.getElementById('api-key').value;
+
+            if (!url || !apiKey) {
+                showMessage('Please enter both URL and API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, api_key: apiKey })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('Configuration saved successfully!', 'success');
+                } else {
+                    showMessage('Error saving configuration: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving configuration: ' + error.message, 'error');
             }
         }
 
+        async function testConnection() {
+            const url = document.getElementById('dt-url').value;
+            const apiKey = document.getElementById('api-key').value;
+
+            if (!url || !apiKey) {
+                showMessage('Please enter both URL and API key', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('test-connection-text');
+            const spinner = document.getElementById('test-connection-spinner');
+            
+            btn.style.display = 'none';
+            spinner.style.display = 'inline-block';
+
+            try {
+                const response = await fetch('/api/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, api_key: apiKey })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('✅ Connection successful!', 'success');
+                } else {
+                    showMessage('❌ Connection failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Connection test failed: ' + error.message, 'error');
+            } finally {
+                btn.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Data synchronization
         async function syncProjects() {
-            const btn = event.target;
+            const btn = document.getElementById('sync-projects-btn');
+            const spinner = document.getElementById('sync-projects-spinner');
+            const status = document.getElementById('projects-sync-status');
+            
             btn.disabled = true;
-            btn.textContent = 'Syncing...';
-            
-            const response = await fetch('/api/sync/projects', {method: 'POST'});
-            const result = await response.json();
-            
-            if (result.success) {
-                alert(`✅ Synced ${result.count} projects!`);
-                await loadProjects();
-            } else {
-                alert('❌ Error: ' + result.error);
+            spinner.style.display = 'inline-block';
+            status.textContent = 'Syncing...';
+
+            try {
+                const response = await fetch('/api/sync/projects', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.textContent = `✅ Synced ${result.count} projects`;
+                    status.className = 'sync-status sync-success';
+                    loadProjects();
+                } else {
+                    status.textContent = `❌ Error: ${result.error}`;
+                    status.className = 'sync-status sync-error';
+                }
+            } catch (error) {
+                status.textContent = '❌ Sync failed: ' + error.message;
+                status.className = 'sync-status sync-error';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
             }
-            
-            btn.disabled = false;
-            btn.textContent = 'Sync Projects';
         }
 
+        async function syncVulnerabilities() {
+            const projectId = document.getElementById('project-select').value;
+            if (!projectId) {
+                showMessage('Please select a project first', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('sync-vuln-btn');
+            const spinner = document.getElementById('sync-vuln-spinner');
+            const status = document.getElementById('vuln-sync-status');
+            
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            status.textContent = 'Syncing vulnerabilities... This may take a while for large projects.';
+
+            try {
+                const response = await fetch(`/api/sync/vulnerabilities/${projectId}`, { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.textContent = `✅ Synced ${result.count} vulnerabilities`;
+                    status.className = 'sync-status sync-success';
+                    loadDashboardMetrics();
+                    loadVulnerabilities();
+                } else {
+                    status.textContent = `❌ Error: ${result.error}`;
+                    status.className = 'sync-status sync-error';
+                }
+            } catch (error) {
+                status.textContent = '❌ Sync failed: ' + error.message;
+                status.className = 'sync-status sync-error';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Data loading
         async function loadProjects() {
-            const response = await fetch('/api/projects');
-            const projects = await response.json();
-            
-            const select = document.getElementById('project-select');
-            select.innerHTML = '<option value="">-- Select Project --</option>';
-            
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.id;
-                option.textContent = `${project.name} ${project.version || ''}`;
-                select.appendChild(option);
-            });
+            try {
+                const response = await fetch('/api/projects');
+                const projects = await response.json();
+                
+                const projectSelect = document.getElementById('project-select');
+                const filterProject = document.getElementById('filter-project');
+                
+                projectSelect.innerHTML = '<option value="">Select a project...</option>';
+                filterProject.innerHTML = '<option value="">All Projects</option>';
+                
+                projects.forEach(project => {
+                    const option1 = document.createElement('option');
+                    option1.value = project.id;
+                    option1.textContent = `${project.name} ${project.version ? `(${project.version})` : ''}`;
+                    projectSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = project.id;
+                    option2.textContent = `${project.name} ${project.version ? `(${project.version})` : ''}`;
+                    filterProject.appendChild(option2);
+                });
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
         }
 
-        async function loadComponents() {
+        function onProjectChange() {
             const projectId = document.getElementById('project-select').value;
-            if (!projectId) return;
+            const syncBtn = document.getElementById('sync-vuln-btn');
             
-            // Sync components first
-            await fetch(`/api/sync/components/${projectId}`, {method: 'POST'});
-            
-            const response = await fetch(`/api/components/${projectId}`);
-            const components = await response.json();
-            
-            const select = document.getElementById('component-select');
-            select.innerHTML = '<option value="">-- Select Component --</option>';
-            
-            components.forEach(component => {
-                const option = document.createElement('option');
-                option.value = component.id;
-                option.textContent = `${component.name} ${component.version || ''}`;
-                select.appendChild(option);
-            });
-        }
-
-        async function loadVulnerabilities() {
-            const componentId = document.getElementById('component-select').value;
-            const projectId = document.getElementById('project-select').value;
-            
-            if (!componentId || !projectId) {
-                alert('Please select both project and component');
-                return;
+            if (projectId) {
+                syncBtn.disabled = false;
+                currentFilters.project_id = projectId;
+            } else {
+                syncBtn.disabled = true;
+                delete currentFilters.project_id;
             }
             
-            document.getElementById('vuln-loading').style.display = 'block';
-            
-            // Sync vulnerabilities
-            await fetch(`/api/sync/vulnerabilities/${componentId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({project_id: projectId})
-            });
-            
-            await applyFilters();
-            await updateDashboard();
-            
-            document.getElementById('vuln-loading').style.display = 'none';
+            loadDashboardMetrics();
+            loadVulnerabilities();
         }
 
-        async function applyFilters() {
-            const projectId = document.getElementById('project-select').value;
-            const componentId = document.getElementById('component-select').value;
-            const severity = document.getElementById('filter-severity').value;
-            const status = document.getElementById('filter-status').value;
-            
-            const params = new URLSearchParams();
-            if (projectId) params.append('project_id', projectId);
-            if (componentId) params.append('component_id', componentId);
-            if (severity) params.append('severity', severity);
-            if (status) params.append('status', status);
-            
-            const response = await fetch(`/api/vulnerabilities?${params}`);
-            const vulnerabilities = await response.json();
-            
-            displayVulnerabilities(vulnerabilities);
-        }
-
-        function displayVulnerabilities(vulns) {
-            const tbody = document.getElementById('vuln-tbody');
-            document.getElementById('vuln-count').textContent = `${vulns.length} vulnerabilities`;
-            
-            if (vulns.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #999;">No vulnerabilities found</td></tr>';
-                return;
+        async function loadDashboardMetrics() {
+            try {
+                const params = new URLSearchParams(currentFilters);
+                const response = await fetch(`/api/dashboard/metrics?${params}`);
+                const metrics = await response.json();
+                
+                updateMetricsDisplay(metrics);
+                updateCharts(metrics);
+            } catch (error) {
+                console.error('Error loading metrics:', error);
             }
-            
-            tbody.innerHTML = vulns.map(v => `
-                <tr>
-                    <td><strong>${v.cve_id}</strong></td>
-                    <td>${v.component_name || 'N/A'}</td>
-                    <td><span class="severity-badge severity-${v.severity.toLowerCase()}">${v.severity}</span></td>
-                    <td>${v.cvss_score}</td>
-                    <td><span class="status-badge status-${v.status.toLowerCase().replace(' ', '-')}">${v.status}</span></td>
-                    <td>
-                        <button class="btn btn-primary" style="padding: 5px 15px; font-size: 12px;" 
-                                onclick='openAssessmentModal(${JSON.stringify(v)})'>
-                            ${v.assessment_text ? 'Edit' : 'Assess'}
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
         }
 
-        async function updateDashboard() {
-            const projectId = document.getElementById('project-select').value;
-            const params = new URLSearchParams();
-            if (projectId) params.append('project_id', projectId);
-            
-            const response = await fetch(`/api/dashboard/metrics?${params}`);
-            const metrics = await response.json();
-            
-            // Update metric cards
-            document.getElementById('metric-critical').textContent = metrics.severity.CRITICAL || 0;
-            document.getElementById('metric-high').textContent = metrics.severity.HIGH || 0;
-            document.getElementById('metric-medium').textContent = metrics.severity.MEDIUM || 0;
-            document.getElementById('metric-low').textContent = metrics.severity.LOW || 0;
-            document.getElementById('metric-affected').textContent = metrics.status.Affected || 0;
-            document.getElementById('metric-not-affected').textContent = metrics.status['Not Affected'] || 0;
-            document.getElementById('metric-under-review').textContent = metrics.status['Under Review'] || 0;
-            
-            // Update charts
-            updateCharts(metrics);
+        function updateMetricsDisplay(metrics) {
+            document.getElementById('critical-count').textContent = metrics.severity.CRITICAL || 0;
+            document.getElementById('high-count').textContent = metrics.severity.HIGH || 0;
+            document.getElementById('medium-count').textContent = metrics.severity.MEDIUM || 0;
+            document.getElementById('low-count').textContent = metrics.severity.LOW || 0;
         }
 
-        function updateCharts(metrics) {
-            // Severity Chart
-            if (charts.severity) charts.severity.destroy();
-            const sevCtx = document.getElementById('severity-chart').getContext('2d');
-            charts.severity = new Chart(sevCtx, {
+        function initializeCharts() {
+            const severityCtx = document.getElementById('severity-chart').getContext('2d');
+            const statusCtx = document.getElementById('status-chart').getContext('2d');
+
+            severityChart = new Chart(severityCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Critical', 'High', 'Medium', 'Low'],
                     datasets: [{
-                        data: [
-                            metrics.severity.CRITICAL || 0,
-                            metrics.severity.HIGH || 0,
-                            metrics.severity.MEDIUM || 0,
-                            metrics.severity.LOW || 0
-                        ],
-                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#28a745']
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#dc3545', '#fd7e14', '#17a2b8', '#28a745'],
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
                 }
             });
-            
-            // Status Chart
-            if (charts.status) charts.status.destroy();
-            const statCtx = document.getElementById('status-chart').getContext('2d');
-            charts.status = new Chart(statCtx, {
-                type: 'bar',
+
+            statusChart = new Chart(statusCtx, {
+                type: 'pie',
                 data: {
                     labels: ['Affected', 'Not Affected', 'Under Review'],
                     datasets: [{
-                        label: 'Count',
-                        data: [
-                            metrics.status.Affected || 0,
-                            metrics.status['Not Affected'] || 0,
-                            metrics.status['Under Review'] || 0
-                        ],
-                        backgroundColor: ['#dc3545', '#28a745', '#6c757d']
+                        data: [0, 0, 0],
+                        backgroundColor: ['#dc3545', '#28a745', '#6c757d'],
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
                         }
                     }
                 }
             });
         }
 
-        function openAssessmentModal(vuln) {
-            currentVulnId = vuln.id;
-            document.getElementById('modal-cve-id').value = vuln.cve_id;
-            document.getElementById('modal-status').value = vuln.status;
-            document.getElementById('modal-assessment').value = vuln.assessment_text || '';
-            document.getElementById('assessment-modal').classList.add('active');
-        }
+        function updateCharts(metrics) {
+            if (severityChart) {
+                severityChart.data.datasets[0].data = [
+                    metrics.severity.CRITICAL || 0,
+                    metrics.severity.HIGH || 0,
+                    metrics.severity.MEDIUM || 0,
+                    metrics.severity.LOW || 0
+                ];
+                severityChart.update();
+            }
 
-        function closeModal() {
-            document.getElementById('assessment-modal').classList.remove('active');
-        }
-
-        async function saveAssessment() {
-            const data = {
-                vulnerability_id: currentVulnId,
-                cve_id: document.getElementById('modal-cve-id').value,
-                status: document.getElementById('modal-status').value,
-                assessment_text: document.getElementById('modal-assessment').value,
-                assessed_by: 'user'
-            };
-            
-            const response = await fetch('/api/assessment', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-            
-            if (response.ok) {
-                alert('✅ Assessment saved!');
-                closeModal();
-                await applyFilters();
-                await updateDashboard();
+            if (statusChart) {
+                statusChart.data.datasets[0].data = [
+                    metrics.status.Affected || 0,
+                    metrics.status['Not Affected'] || 0,
+                    metrics.status['Under Review'] || 0
+                ];
+                statusChart.update();
             }
         }
 
-        function openImportModal() {
-            document.getElementById('import-modal').classList.add('active');
+        async function loadVulnerabilities() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: perPage,
+                    ...currentFilters,
+                    search: document.getElementById('search-box').value
+                });
+
+                const response = await fetch(`/api/vulnerabilities?${params}`);
+                const data = await response.json();
+                
+                displayVulnerabilities(data.vulnerabilities);
+                updatePagination(data.pagination);
+            } catch (error) {
+                console.error('Error loading vulnerabilities:', error);
+            }
         }
 
-        function closeImportModal() {
-            document.getElementById('import-modal').classList.remove('active');
+        function displayVulnerabilities(vulnerabilities) {
+            const tbody = document.getElementById('vuln-tbody');
+            
+            if (vulnerabilities.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            No vulnerabilities found matching the current filters.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = vulnerabilities.map(vuln => `
+                <tr>
+                    <td><strong>${vuln.cve_id}</strong></td>
+                    <td><span class="badge badge-${vuln.severity.toLowerCase()}">${vuln.severity}</span></td>
+                    <td>${vuln.cvss_score || 'N/A'}</td>
+                    <td>${vuln.component_name || 'Unknown'}</td>
+                    <td>${vuln.project_name || 'Unknown'}</td>
+                    <td><span class="badge badge-${vuln.status.toLowerCase().replace(' ', '-')}">${vuln.status}</span></td>
+                    <td>${vuln.published_date ? new Date(vuln.published_date).toLocaleDateString() : 'N/A'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-primary btn-sm" onclick="openAssessmentModal('${vuln.cve_id}', ${vuln.id}, '${vuln.severity}', '${vuln.status}', '${vuln.assessment_text || ''}')">
+                            Assess
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        async function importAssessment() {
+        function updatePagination(pagination) {
+            currentPage = pagination.page;
+            totalPages = pagination.pages;
+            
+            document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prev-btn').disabled = currentPage <= 1;
+            document.getElementById('next-btn').disabled = currentPage >= totalPages;
+            document.getElementById('vuln-count').textContent = `${pagination.total} vulnerabilities`;
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadVulnerabilities();
+            }
+        }
+
+        // Filter functions
+        function applyFilters() {
+            currentFilters = {
+                project_id: document.getElementById('filter-project').value,
+                severity: document.getElementById('filter-severity').value,
+                status: document.getElementById('filter-status').value
+            };
+
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) delete currentFilters[key];
+            });
+
+            currentPage = 1;
+            loadDashboardMetrics();
+            loadVulnerabilities();
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-project').value = '';
+            document.getElementById('filter-severity').value = '';
+            document.getElementById('filter-status').value = '';
+            document.getElementById('search-box').value = '';
+            currentFilters = {};
+            currentPage = 1;
+            loadDashboardMetrics();
+            loadVulnerabilities();
+        }
+
+        // Assessment functions
+        function openAssessmentModal(cveId, vulnId, severity, status, assessmentText) {
+            currentVulnerability = { cveId, vulnId, severity, status, assessmentText };
+            
+            document.getElementById('modal-cve-id').value = cveId;
+            document.getElementById('modal-severity').value = severity;
+            document.getElementById('modal-status').value = status;
+            document.getElementById('modal-assessment').value = assessmentText || '';
+            
+            document.getElementById('assessment-modal').classList.add('active');
+        }
+
+        function closeAssessmentModal() {
+            document.getElementById('assessment-modal').classList.remove('active');
+            currentVulnerability = null;
+        }
+
+        async function saveAssessment() {
+            if (!currentVulnerability) return;
+
+            const status = document.getElementById('modal-status').value;
+            const assessmentText = document.getElementById('modal-assessment').value;
+
+            try {
+                const response = await fetch('/api/assessment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vulnerability_id: currentVulnerability.vulnId,
+                        cve_id: currentVulnerability.cveId,
+                        status: status,
+                        assessment_text: assessmentText,
+                        assessed_by: 'user'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('Assessment saved successfully!', 'success');
+                    closeAssessmentModal();
+                    loadDashboardMetrics();
+                    loadVulnerabilities();
+                } else {
+                    showMessage('Error saving assessment: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving assessment: ' + error.message, 'error');
+            }
+        }
+
+        // Bulk assessment functions
+        async function loadBulkAssessmentData() {
+            try {
+                const response = await fetch('/api/vulnerabilities?per_page=1000');
+                const data = await response.json();
+                
+                bulkAssessmentData = {};
+                const tbody = document.getElementById('bulk-assessment-tbody');
+                
+                tbody.innerHTML = data.vulnerabilities.map(vuln => {
+                    const id = `vuln-${vuln.id}`;
+                    bulkAssessmentData[id] = {
+                        cve_id: vuln.cve_id,
+                        vulnerability_id: vuln.id,
+                        current_status: vuln.status,
+                        new_status: vuln.status,
+                        assessment_text: vuln.assessment_text || ''
+                    };
+                    
+                    return `
+                        <tr>
+                            <td><input type="checkbox" id="check-${vuln.id}" onchange="toggleVulnerability('${id}')"></td>
+                            <td>${vuln.cve_id}</td>
+                            <td><span class="badge badge-${vuln.severity.toLowerCase()}">${vuln.severity}</span></td>
+                            <td><span class="badge badge-${vuln.status.toLowerCase().replace(' ', '-')}">${vuln.status}</span></td>
+                            <td>
+                                <select id="status-${vuln.id}" onchange="updateBulkStatus('${id}', this.value)">
+                                    <option value="Under Review" ${vuln.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
+                                    <option value="Affected" ${vuln.status === 'Affected' ? 'selected' : ''}>Affected</option>
+                                    <option value="Not Affected" ${vuln.status === 'Not Affected' ? 'selected' : ''}>Not Affected</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" id="notes-${vuln.id}" value="${vuln.assessment_text || ''}" 
+                                       placeholder="Assessment notes..." onchange="updateBulkNotes('${id}', this.value)"
+                                       style="width: 100%; padding: 5px;">
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading bulk assessment data:', error);
+            }
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all').checked;
+            document.querySelectorAll('#bulk-assessment-tbody input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = selectAll;
+                const id = checkbox.id.replace('check-', 'vuln-');
+                if (selectAll) {
+                    bulkAssessmentData[id].selected = true;
+                } else {
+                    delete bulkAssessmentData[id].selected;
+                }
+            });
+        }
+
+        function toggleVulnerability(id) {
+            const checkbox = document.getElementById(`check-${id.split('-')[1]}`);
+            if (checkbox.checked) {
+                bulkAssessmentData[id].selected = true;
+            } else {
+                delete bulkAssessmentData[id].selected;
+            }
+        }
+
+        function updateBulkStatus(id, status) {
+            if (bulkAssessmentData[id]) {
+                bulkAssessmentData[id].new_status = status;
+            }
+        }
+
+        function updateBulkNotes(id, notes) {
+            if (bulkAssessmentData[id]) {
+                bulkAssessmentData[id].assessment_text = notes;
+            }
+        }
+
+        function applyBulkStatus() {
+            const newStatus = document.getElementById('bulk-status').value;
+            Object.keys(bulkAssessmentData).forEach(id => {
+                if (bulkAssessmentData[id].selected) {
+                    bulkAssessmentData[id].new_status = newStatus;
+                    document.getElementById(`status-${id.split('-')[1]}`).value = newStatus;
+                }
+            });
+            showMessage(`Applied ${newStatus} status to selected vulnerabilities`, 'success');
+        }
+
+        async function saveBulkAssessments() {
+            const assessments = Object.values(bulkAssessmentData).filter(assessment => 
+                assessment.new_status !== assessment.current_status || assessment.assessment_text
+            );
+
+            if (assessments.length === 0) {
+                showMessage('No changes to save', 'info');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/assessment/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assessments })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(`Successfully updated ${result.updated} assessments!`, 'success');
+                    loadBulkAssessmentData();
+                    loadDashboardMetrics();
+                } else {
+                    showMessage('Error saving assessments: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving assessments: ' + error.message, 'error');
+            }
+        }
+
+        // Import/Export functions
+        async function downloadTemplate() {
+            try {
+                const response = await fetch('/api/assessment/template');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `assessment_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showMessage('Template downloaded successfully!', 'success');
+                }
+            } catch (error) {
+                showMessage('Error downloading template: ' + error.message, 'error');
+            }
+        }
+
+        async function importExcel() {
             const fileInput = document.getElementById('import-file');
             const file = fileInput.files[0];
-            
-            if (!file) return;
-            
+
+            if (!file) {
+                showMessage('Please select a file to import', 'error');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('file', file);
-            
-            const response = await fetch('/api/assessment/import', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert(`✅ Imported ${result.count} assessments!`);
-                closeImportModal();
-                await applyFilters();
-                await updateDashboard();
-            } else {
-                alert('❌ Error: ' + result.error);
+
+            try {
+                const response = await fetch('/api/assessment/import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(`Successfully imported ${result.imported} new and updated ${result.updated} assessments!`, 'success');
+                    fileInput.value = '';
+                    loadDashboardMetrics();
+                    loadVulnerabilities();
+                } else {
+                    showMessage('Error importing assessments: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error importing assessments: ' + error.message, 'error');
             }
         }
 
         async function exportReport() {
-            const projectId = document.getElementById('project-select').value;
-            const params = new URL
+            try {
+                const projectId = document.getElementById('filter-project').value;
+                const params = projectId ? `?project_id=${projectId}` : '';
+                
+                const response = await fetch(`/api/export${params}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `vulnerability_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showMessage('Report exported successfully!', 'success');
+                }
+            } catch (error) {
+                showMessage('Error exporting report: ' + error.message, 'error');
+            }
         }
+
+        function exportCurrentView() {
+            exportReport(); // For now, export full report. Can be enhanced to export filtered data
+        }
+
+        // Utility functions
+        function refreshData() {
+            loadDashboardMetrics();
+            loadVulnerabilities();
+            showMessage('Data refreshed!', 'success');
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('config-message');
+            messageDiv.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('assessment-modal');
+            if (event.target === modal) {
+                closeAssessmentModal();
+            }
+        }
+    </script>
+</body>
+</html>
